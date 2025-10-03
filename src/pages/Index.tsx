@@ -3,10 +3,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/hooks/use-toast";
 import Icon from "@/components/ui/icon";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [apiUrl, setApiUrl] = useState("");
+  const [apiName, setApiName] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [liveData, setLiveData] = useState<any>(null);
+  const { toast } = useToast();
 
   const endpoints = [
     {
@@ -127,6 +135,23 @@ const Index = () => {
               </Card>
             </div>
 
+            {liveData && (
+              <Card className="border-accent/40 bg-accent/5 animate-fade-in">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <Icon name="Zap" className="text-accent" size={24} />
+                    <CardTitle>Live API Response</CardTitle>
+                  </div>
+                  <CardDescription>Real-time data from external endpoint</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <pre className="bg-muted p-4 rounded-lg overflow-auto max-h-64 text-sm">
+                    {JSON.stringify(liveData, null, 2)}
+                  </pre>
+                </CardContent>
+              </Card>
+            )}
+
             <div className="space-y-4">
               {endpoints.map((endpoint, index) => (
                 <Card
@@ -212,15 +237,69 @@ const Index = () => {
           <TabsContent value="integrations" className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Integrations</CardTitle>
+                <CardTitle>Add New Integration</CardTitle>
                 <CardDescription>
-                  Connect with external services and platforms
+                  Connect external REST API endpoints to your hub
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-4 text-muted-foreground">
-                  <Icon name="Link" size={24} />
-                  <p>Integration hub coming soon...</p>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="api-name">API Name</Label>
+                    <Input
+                      id="api-name"
+                      placeholder="e.g., Payment Gateway"
+                      value={apiName}
+                      onChange={(e) => setApiName(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="api-url">API Endpoint URL</Label>
+                    <Input
+                      id="api-url"
+                      placeholder="https://api.example.com/endpoint"
+                      value={apiUrl}
+                      onChange={(e) => setApiUrl(e.target.value)}
+                    />
+                  </div>
+                  <Button
+                    onClick={async () => {
+                      if (!apiUrl || !apiName) {
+                        toast({
+                          title: "Error",
+                          description: "Please fill in all fields",
+                          variant: "destructive"
+                        });
+                        return;
+                      }
+                      setLoading(true);
+                      try {
+                        const response = await fetch(
+                          `https://functions.poehali.dev/22ce8ac0-8352-4ffb-a86c-ec6ebc63a2b2?url=${encodeURIComponent(apiUrl)}`
+                        );
+                        const data = await response.json();
+                        setLiveData(data);
+                        toast({
+                          title: "Success!",
+                          description: `Connected to ${apiName} successfully`,
+                        });
+                        setActiveTab("dashboard");
+                      } catch (error) {
+                        toast({
+                          title: "Connection Failed",
+                          description: "Unable to connect to the API endpoint",
+                          variant: "destructive"
+                        });
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                    className="w-full"
+                    disabled={loading}
+                  >
+                    <Icon name="Link" size={16} className="mr-2" />
+                    {loading ? "Connecting..." : "Connect API"}
+                  </Button>
                 </div>
               </CardContent>
             </Card>
